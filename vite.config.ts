@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'JSX Viewer',
           short_name: 'JSX Viewer',
-          description: 'Drag and drop .jsx files to view and preview React UI mockups.',
+          description: 'A minimalist workbench for testing React UI components and UX flows.',
           theme_color: '#111827',
           background_color: '#111827',
           display: 'standalone',

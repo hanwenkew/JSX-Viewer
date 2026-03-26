@@ -22,6 +22,10 @@ export function Preview({ code, onCodeChange }: PreviewProps) {
   // Handle errors from the iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // In srcDoc iframes, the origin is 'null'. We can't strictly verify it, 
+      // but we can ensure the message comes from our iframe.
+      if (event.source !== iframeRef.current?.contentWindow) return;
+
       if (event.data.type === 'error') {
         setError(event.data.message);
       } else if (event.data.type === 'ready') {
@@ -114,6 +118,9 @@ export function Preview({ code, onCodeChange }: PreviewProps) {
         let reactRoot = null;
 
         window.addEventListener('message', (event) => {
+          // Verify message is from parent
+          if (event.source !== window.parent) return;
+
           if (event.data.type === 'render') {
             const { code } = event.data;
             try {
@@ -157,13 +164,13 @@ export function Preview({ code, onCodeChange }: PreviewProps) {
                 throw new Error("No renderable component found. Make sure to 'export default' your component.");
               }
             } catch (err) {
-              window.parent.postMessage({ type: 'error', message: err.message }, '*');
+              window.parent.postMessage({ type: 'error', message: err.message }, window.location.origin === 'null' ? '*' : window.location.origin);
             }
           }
         });
 
         // Signal that we are ready
-        window.parent.postMessage({ type: 'ready' }, '*');
+        window.parent.postMessage({ type: 'ready' }, window.location.origin === 'null' ? '*' : window.location.origin);
       </script>
     </body>
     </html>

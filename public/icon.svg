@@ -1,6 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="128" fill="#111827"/>
-  <path d="M128 128h256v256h-256z" fill="none" stroke="#60a5fa" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M256 128v256" stroke="#60a5fa" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M128 256h256" stroke="#60a5fa" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    rect, circle { fill: none; stroke: #111827; }
+    path { stroke: #9ca3af; }
+    circle { fill: #111827; stroke: none; }
+    @media (prefers-color-scheme: dark) {
+      rect { stroke: #f3f4f6; }
+      path { stroke: #6b7280; }
+      circle { fill: #f3f4f6; }
+    }
+  </style>
+  <!-- UI: The Structured Frame -->
+  <rect x="20" y="20" width="60" height="60" rx="14" stroke-width="6" />
+  <!-- UX: The Fluid User Journey -->
+  <path d="M35 50C35 25 65 75 65 50" stroke-width="6" stroke-linecap="round" />
+  <!-- The Interaction Point (The "Click") -->
+  <circle cx="65" cy="50" r="4" />
 </svg>

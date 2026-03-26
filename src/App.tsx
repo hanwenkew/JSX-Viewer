@@ -106,6 +106,11 @@ export default function App() {
         
         Array.from(e.dataTransfer.files).forEach(file => {
           if (file.name.endsWith('.jsx') || file.name.endsWith('.js') || file.name.endsWith('.tsx')) {
+            // Limit file size to 1MB
+            if (file.size > 1024 * 1024) {
+              alert(`File ${file.name} is too large. Max size is 1MB.`);
+              return;
+            }
             const reader = new FileReader();
             reader.onload = (ev) => {
               const newFileId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -183,6 +188,11 @@ export default function App() {
   };
 
   const handleFileDrop = (file: File) => {
+    // Limit file size to 1MB
+    if (file.size > 1024 * 1024) {
+      alert(`File ${file.name} is too large. Max size is 1MB.`);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       addFile(file.name, e.target?.result as string);
