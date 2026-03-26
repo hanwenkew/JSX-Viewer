@@ -1,0 +1,5 @@
+{
+  "name": "JSX Viewer PWA",
+  "description": "A Progressive Web App to view and preview React UI mockups from .jsx files.",
+  "requestFramePermissions": []
+}
