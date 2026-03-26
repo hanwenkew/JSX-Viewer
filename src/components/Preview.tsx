@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as Babel from '@babel/standalone';
 import * as LucideIcons from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
 
 interface PreviewProps {
   code: string;
@@ -9,10 +8,9 @@ interface PreviewProps {
 }
 
 export function Preview({ code, onCodeChange }: PreviewProps) {
-  const [Component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isFixing, setIsFixing] = useState(false);
   const [debouncedCode, setDebouncedCode] = useState(code);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -22,209 +20,131 @@ export function Preview({ code, onCodeChange }: PreviewProps) {
   }, [code]);
 
   useEffect(() => {
-    // Inject Tailwind CSS script for runtime class generation
-    if (!document.getElementById('tailwind-cdn')) {
-      const script = document.createElement('script');
-      script.id = 'tailwind-cdn';
-      script.src = 'https://cdn.tailwindcss.com';
-      script.onload = () => {
-        // Configure Tailwind once loaded
-        if ((window as any).tailwind) {
-          (window as any).tailwind.config = {
-            theme: {
-              extend: {
-                fontFamily: {
-                  sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-                },
-              }
-            }
-          }
-        }
-      };
-      document.head.appendChild(script);
-      
-      // Inject Inter font
-      if (!document.getElementById('inter-font')) {
-        const link = document.createElement('link');
-        link.id = 'inter-font';
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap';
-        document.head.appendChild(link);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     try {
-      // Basic preprocessing to make Codex output runnable
+      // 1. Pre-process code for the sandbox
+      let processedCode = debouncedCode;
       
-      // 1. Handle lucide-react imports
-      let processedCode = debouncedCode.replace(/import\s+{([^}]+)}\s+from\s+['"]lucide-react['"];?/g, (match, imports) => {
+      // Handle lucide-react imports (they will be available globally in the sandbox)
+      processedCode = processedCode.replace(/import\s+{([^}]+)}\s+from\s+['"]lucide-react['"];?/g, (match, imports) => {
         return `const { ${imports} } = LucideIcons;`;
       });
 
-      // 2. Remove react imports
+      // Remove react imports (React and hooks will be global)
       processedCode = processedCode.replace(/import\s+.*?from\s+['"]react['"];?/g, '');
-
-      // 3. Remove any other imports
       processedCode = processedCode.replace(/import[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
       
-      // 4. Replace `export default` with `const __DEFAULT_EXPORT__ = `
-      processedCode = processedCode.replace(/export\s+default\s+/g, 'const __DEFAULT_EXPORT__ = ');
-      
-      // 5. Remove other exports
+      // Handle exports
+      processedCode = processedCode.replace(/export\s+default\s+/g, 'window.__DEFAULT_EXPORT__ = ');
       processedCode = processedCode.replace(/export\s+/g, '');
 
-      // Transpile JSX/TSX to JS
+      // 2. Transpile
       const transpiled = Babel.transform(processedCode, {
         presets: ['react', 'env', ['typescript', { isTSX: true, allExtensions: true }]],
         filename: 'mockup.tsx',
       }).code;
 
-      // Create a function that provides React and other common libs in scope
-      // We inject React, common hooks, and LucideIcons
-      const renderFn = new Function(
-        'React',
-        'useState',
-        'useEffect',
-        'useRef',
-        'useMemo',
-        'useCallback',
-        'useContext',
-        'useReducer',
-        'useLayoutEffect',
-        'LucideIcons',
-        `
-          ${transpiled}
-          return typeof __DEFAULT_EXPORT__ !== 'undefined' ? __DEFAULT_EXPORT__ : null;
-        `
-      );
+      // 3. Construct the sandboxed HTML
+      const srcDoc = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+            <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <script src="https://unpkg.com/lucide@latest"></script>
+            <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+            <style>
+              body { margin: 0; padding: 0; font-family: sans-serif; }
+              #root { height: 100vh; width: 100vw; overflow: auto; }
+            </style>
+            <script>
+              window.tailwind.config = {
+                theme: {
+                  extend: {
+                    fontFamily: {
+                      sans: ['Inter', 'sans-serif'],
+                    },
+                  }
+                }
+              };
+            </script>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script>
+              const { useState, useEffect, useRef, useMemo, useCallback, useContext, useReducer, useLayoutEffect } = React;
+              const LucideIcons = LucideReact;
+              
+              window.onerror = function(message, source, lineno, colno, error) {
+                window.parent.postMessage({ type: 'error', message: message }, '*');
+              };
 
-      const result = renderFn(
-        React,
-        React.useState,
-        React.useEffect,
-        React.useRef,
-        React.useMemo,
-        React.useCallback,
-        React.useContext,
-        React.useReducer,
-        React.useLayoutEffect,
-        LucideIcons
-      );
-      
-      if (typeof result === 'function') {
-        setComponent(() => result);
+              try {
+                ${transpiled}
+                
+                const rootElement = document.getElementById('root');
+                const root = ReactDOM.createRoot(rootElement);
+                
+                if (typeof window.__DEFAULT_EXPORT__ === 'function') {
+                  root.render(React.createElement(window.__DEFAULT_EXPORT__));
+                } else if (React.isValidElement(window.__DEFAULT_EXPORT__)) {
+                  root.render(window.__DEFAULT_EXPORT__);
+                } else {
+                  throw new Error("No default export found. Use 'export default ComponentName'.");
+                }
+              } catch (err) {
+                window.parent.postMessage({ type: 'error', message: err.message }, '*');
+              }
+            </script>
+          </body>
+        </html>
+      `;
+
+      if (iframeRef.current) {
+        iframeRef.current.srcdoc = srcDoc;
         setError(null);
-      } else {
-        // If the result is a React element, wrap it in a component
-        if (React.isValidElement(result)) {
-           setComponent(() => () => result);
-           setError(null);
-        } else {
-           // If it didn't return anything, it might just be a component declaration without export default.
-           // We could try to extract the last defined variable, but for now we require export default.
-           setError("Could not find a default export or renderable component. Make sure your code has 'export default ComponentName'.");
-        }
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Error parsing or rendering JSX');
-      setComponent(null);
+      setError(err.message || 'Transpilation Error');
     }
   }, [debouncedCode]);
 
-  const handleFixCode = async () => {
-    if (!error) return;
-    setIsFixing(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-      const prompt = `You are an expert React developer. The following React JSX code threw an error.
-Fix the error and return ONLY the raw fixed code. Do not include markdown formatting like \`\`\`jsx or \`\`\`.
-
-Error:
-${error}
-
-Code:
-${debouncedCode}`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-      });
-
-      let fixedCode = response.text || '';
-      fixedCode = fixedCode.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '').trim();
-
-      if (onCodeChange) {
-        onCodeChange(fixedCode);
+  // Listen for errors from the sandbox
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'error') {
+        setError(event.data.message);
       }
-    } catch (err) {
-      console.error("Failed to fix code:", err);
-      alert("Failed to fix code with AI.");
-    } finally {
-      setIsFixing(false);
-    }
-  };
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   if (error) {
     return (
-      <div className="h-full p-4 overflow-auto bg-red-50 text-red-600 font-mono text-sm rounded-2xl border border-red-200 flex flex-col">
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="font-bold">Render Error:</h3>
-          {onCodeChange && (
-            <button
-              onClick={handleFixCode}
-              disabled={isFixing}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors font-sans font-medium text-xs disabled:opacity-50"
-            >
-              {isFixing ? <LucideIcons.Loader2 className="w-3 h-3 animate-spin" /> : <LucideIcons.Sparkles className="w-3 h-3" />}
-              <span>{isFixing ? 'Fixing...' : 'Fix with AI'}</span>
-            </button>
-          )}
+      <div className="h-full p-6 overflow-auto bg-red-50/50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-mono text-sm flex flex-col">
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center space-x-2">
+            <LucideIcons.AlertCircle className="w-5 h-5" />
+            <h3 className="font-bold text-lg uppercase tracking-tight">Render Error</h3>
+          </div>
         </div>
-        <pre className="whitespace-pre-wrap flex-1">{error}</pre>
-      </div>
-    );
-  }
-
-  if (!Component) {
-    return (
-      <div className="h-full flex items-center justify-center text-gray-500 bg-gray-50 rounded-2xl border border-gray-200">
-        Processing JSX...
+        <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
+          <pre className="whitespace-pre-wrap leading-relaxed">{error}</pre>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-auto bg-white relative">
-      <ErrorBoundary>
-        <Component />
-      </ErrorBoundary>
+    <div className="h-full w-full bg-white relative overflow-hidden">
+      <iframe
+        ref={iframeRef}
+        title="Preview Sandbox"
+        className="h-full w-full border-none"
+        sandbox="allow-scripts"
+      />
     </div>
   );
-}
-
-// Simple error boundary to catch runtime errors in the previewed component
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null}> {
-  constructor(props: {children: React.ReactNode}) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-50 text-red-600 font-mono text-sm rounded-2xl border border-red-200">
-          <h3 className="font-bold mb-2">Runtime Error:</h3>
-          <pre className="whitespace-pre-wrap">{this.state.error?.message}</pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
 }
