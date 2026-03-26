@@ -1,5 +1,5 @@
 {
-  "name": "JSX Viewer PWA",
-  "description": "A Progressive Web App to view and preview React UI mockups from .jsx files.",
+  "name": "JSX Viewer: Real-time React Component Previewer",
+  "description": "A sleek, real-time React component previewer and comparison tool with responsive viewport toggles and intuitive zoom.",
   "requestFramePermissions": []
 }
