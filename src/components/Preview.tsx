@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as Babel from '@babel/standalone';
-import * as LucideIcons from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface PreviewProps {
   code: string;
@@ -15,134 +15,179 @@ export function Preview({ code, onCodeChange }: PreviewProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedCode(code);
-    }, 500); // 500ms debounce
+    }, 500);
     return () => clearTimeout(timer);
   }, [code]);
 
+  // Handle errors from the iframe
   useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'error') {
+        setError(event.data.message);
+      } else if (event.data.type === 'ready') {
+        updateIframe();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [debouncedCode]);
+
+  const updateIframe = () => {
+    if (!iframeRef.current) return;
+
     try {
-      // 1. Pre-process code for the sandbox
-      let processedCode = debouncedCode;
-      
-      // Handle lucide-react imports (they will be available globally in the sandbox)
-      processedCode = processedCode.replace(/import\s+{([^}]+)}\s+from\s+['"]lucide-react['"];?/g, (match, imports) => {
+      // 1. Handle lucide-react imports
+      let processedCode = debouncedCode.replace(/import\s+{([^}]+)}\s+from\s+['"]lucide-react['"];?/g, (match, imports) => {
         return `const { ${imports} } = LucideIcons;`;
       });
 
-      // Remove react imports (React and hooks will be global)
+      // 2. Remove react imports
       processedCode = processedCode.replace(/import\s+.*?from\s+['"]react['"];?/g, '');
+
+      // 3. Remove any other imports
       processedCode = processedCode.replace(/import[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
       
-      // Handle exports
-      processedCode = processedCode.replace(/export\s+default\s+/g, 'window.__DEFAULT_EXPORT__ = ');
+      // 4. Replace `export default` with `const __DEFAULT_EXPORT__ = `
+      processedCode = processedCode.replace(/export\s+default\s+/g, 'const __DEFAULT_EXPORT__ = ');
+      
+      // 5. Remove other exports
       processedCode = processedCode.replace(/export\s+/g, '');
 
-      // 2. Transpile
+      // Transpile JSX/TSX to JS
       const transpiled = Babel.transform(processedCode, {
         presets: ['react', 'env', ['typescript', { isTSX: true, allExtensions: true }]],
         filename: 'mockup.tsx',
       }).code;
 
-      // 3. Construct the sandboxed HTML
-      const srcDoc = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8" />
-            <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-            <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-            <script src="https://cdn.tailwindcss.com"></script>
-            <script src="https://unpkg.com/lucide@latest"></script>
-            <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
-            <style>
-              body { margin: 0; padding: 0; font-family: sans-serif; }
-              #root { height: 100vh; width: 100vw; overflow: auto; }
-            </style>
-            <script>
-              window.tailwind.config = {
-                theme: {
-                  extend: {
-                    fontFamily: {
-                      sans: ['Inter', 'sans-serif'],
-                    },
-                  }
-                }
-              };
-            </script>
-          </head>
-          <body>
-            <div id="root"></div>
-            <script>
-              const { useState, useEffect, useRef, useMemo, useCallback, useContext, useReducer, useLayoutEffect } = React;
-              const LucideIcons = LucideReact;
-              
-              window.onerror = function(message, source, lineno, colno, error) {
-                window.parent.postMessage({ type: 'error', message: message }, '*');
-              };
-
-              try {
-                ${transpiled}
-                
-                const rootElement = document.getElementById('root');
-                const root = ReactDOM.createRoot(rootElement);
-                
-                if (typeof window.__DEFAULT_EXPORT__ === 'function') {
-                  root.render(React.createElement(window.__DEFAULT_EXPORT__));
-                } else if (React.isValidElement(window.__DEFAULT_EXPORT__)) {
-                  root.render(window.__DEFAULT_EXPORT__);
-                } else {
-                  throw new Error("No default export found. Use 'export default ComponentName'.");
-                }
-              } catch (err) {
-                window.parent.postMessage({ type: 'error', message: err.message }, '*');
-              }
-            </script>
-          </body>
-        </html>
+      const finalCode = `
+        ${transpiled}
+        return typeof __DEFAULT_EXPORT__ !== 'undefined' ? __DEFAULT_EXPORT__ : null;
       `;
 
-      if (iframeRef.current) {
-        iframeRef.current.srcdoc = srcDoc;
-        setError(null);
-      }
+      iframeRef.current.contentWindow?.postMessage({ type: 'render', code: finalCode }, '*');
+      setError(null);
     } catch (err: any) {
-      setError(err.message || 'Transpilation Error');
+      setError(err.message || 'Error transpiling JSX');
     }
+  };
+
+  useEffect(() => {
+    updateIframe();
   }, [debouncedCode]);
 
-  // Listen for errors from the sandbox
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'error') {
-        setError(event.data.message);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  const srcDoc = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+      <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <script src="https://unpkg.com/lucide-react@latest"></script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        body { 
+          margin: 0; 
+          padding: 0; 
+          font-family: 'Inter', sans-serif; 
+          background: transparent;
+        }
+        #root { min-height: 100vh; }
+        /* Ensure all images have no-referrer policy */
+        img { referrer-policy: no-referrer; }
+      </style>
+      <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              fontFamily: {
+                sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+              },
+            }
+          }
+        }
+      </script>
+    </head>
+    <body>
+      <div id="root"></div>
+      <script>
+        let reactRoot = null;
 
-  if (error) {
-    return (
-      <div className="h-full p-6 overflow-auto bg-red-50/50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-mono text-sm flex flex-col">
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center space-x-2">
-            <LucideIcons.AlertCircle className="w-5 h-5" />
-            <h3 className="font-bold text-lg uppercase tracking-tight">Render Error</h3>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 p-4 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm">
-          <pre className="whitespace-pre-wrap leading-relaxed">{error}</pre>
-        </div>
-      </div>
-    );
-  }
+        window.addEventListener('message', (event) => {
+          if (event.data.type === 'render') {
+            const { code } = event.data;
+            try {
+              const renderFn = new Function(
+                'React',
+                'useState',
+                'useEffect',
+                'useRef',
+                'useMemo',
+                'useCallback',
+                'useContext',
+                'useReducer',
+                'useLayoutEffect',
+                'LucideIcons',
+                code
+              );
+
+              const Component = renderFn(
+                window.React,
+                window.React.useState,
+                window.React.useEffect,
+                window.React.useRef,
+                window.React.useMemo,
+                window.React.useCallback,
+                window.React.useContext,
+                window.React.useReducer,
+                window.React.useLayoutEffect,
+                window.lucide
+              );
+
+              const rootElement = document.getElementById('root');
+              if (!reactRoot) {
+                reactRoot = ReactDOM.createRoot(rootElement);
+              }
+
+              if (typeof Component === 'function') {
+                reactRoot.render(React.createElement(Component));
+              } else if (React.isValidElement(Component)) {
+                reactRoot.render(Component);
+              } else {
+                throw new Error("No renderable component found. Make sure to 'export default' your component.");
+              }
+            } catch (err) {
+              window.parent.postMessage({ type: 'error', message: err.message }, '*');
+            }
+          }
+        });
+
+        // Signal that we are ready
+        window.parent.postMessage({ type: 'ready' }, '*');
+      </script>
+    </body>
+    </html>
+  `;
 
   return (
-    <div className="h-full w-full bg-white relative overflow-hidden">
+    <div className="h-full flex flex-col relative bg-white dark:bg-gray-900 overflow-hidden">
+      {error && (
+        <div className="absolute top-4 left-4 right-4 z-10 p-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-mono text-sm rounded-xl border border-red-200 dark:border-red-800/50 shadow-lg backdrop-blur-md">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <h3 className="font-bold">Render Error</h3>
+            </div>
+          </div>
+          <pre className="whitespace-pre-wrap max-h-[200px] overflow-auto">{error}</pre>
+        </div>
+      )}
+
       <iframe
         ref={iframeRef}
+        srcDoc={srcDoc}
         title="Preview Sandbox"
-        className="h-full w-full border-none"
+        className="flex-1 w-full border-none bg-white"
         sandbox="allow-scripts"
       />
     </div>
