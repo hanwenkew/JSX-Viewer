@@ -1,5 +1,5 @@
 {
-  "name": "JSX Viewer: Real-time React Component Previewer",
-  "description": "A sleek, real-time React component previewer and comparison tool with responsive viewport toggles and intuitive zoom.",
+  "name": "JSX Viewer",
+  "description": "The definitive real-time viewer for React components and JSX snippets. Features split-view comparison, responsive viewport toggles, and intuitive zoom.",
   "requestFramePermissions": []
 }

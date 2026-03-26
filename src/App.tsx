@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileCode2, SplitSquareHorizontal, X, UploadCloud, Download, Columns, Columns3, Code2, Play, Plus, History, FolderOpen, Search, Monitor, Tablet, Smartphone, Square } from 'lucide-react';
+import { Logo } from './components/Logo';
 import { CodeViewer } from './components/CodeViewer';
 import { Preview } from './components/Preview';
 import { cn } from './lib/utils';
@@ -189,13 +190,25 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const closeFile = (e: React.MouseEvent, id: string) => {
+  const closeFile = (e: React.MouseEvent | React.PointerEvent, id: string) => {
     e.stopPropagation();
     setFiles(prev => {
       const next = prev.filter(f => f.id !== id);
-      if (activeFileId === id) {
-        setActiveFileId(next.length > 0 ? next[next.length - 1].id : null);
+      
+      if (next.length === 0) {
+        setActiveFileId(null);
+      } else if (next.length === 1) {
+        setLayout('single');
+        setActiveFileId(next[0].id);
+      } else if (next.length === 2) {
+        setLayout('grid-2');
+        setGridFiles([next[0].id, next[1].id, null]);
+      } else {
+        if (activeFileId === id) {
+          setActiveFileId(next[next.length - 1].id);
+        }
       }
+      
       return next;
     });
     setGridFiles(prev => prev.map(fId => fId === id ? null : fId) as [string | null, string | null, string | null]);
@@ -319,10 +332,12 @@ export default function App() {
         )}
 
         <div className="w-full max-w-3xl flex flex-col items-center">
-          <h1 className="text-2xl font-medium text-gray-600 dark:text-gray-300 mb-8">Open a JSX file</h1>
+          <Logo size={64} className="mb-8" />
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tighter">JSX Viewer</h1>
+          <p className="text-gray-400 dark:text-gray-500 mb-12 text-center max-w-sm text-lg font-medium leading-tight">The minimalist workbench for testing React UI components and UX flows.</p>
           
-          <div className="flex items-center gap-4 mb-16">
-            <label className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 rounded-lg cursor-pointer transition-colors font-medium">
+          <div className="flex items-center gap-6 mb-20">
+            <label className="flex items-center justify-center gap-2 px-8 py-3 bg-gray-900 hover:bg-black dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 rounded-full cursor-pointer transition-all font-semibold shadow-xl hover:scale-105 active:scale-95">
               <FolderOpen className="w-5 h-5" />
               Open file
               <input 
@@ -340,7 +355,7 @@ export default function App() {
             </label>
             <button 
               onClick={() => addFile('Untitled.jsx', 'export default function App() {\n  return (\n    <div className="p-8 flex items-center justify-center min-h-screen bg-gray-50">\n      <h1 className="text-4xl font-bold text-gray-900">Hello World</h1>\n    </div>\n  );\n}')}
-              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg transition-colors font-medium"
+              className="flex items-center justify-center gap-2 px-8 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-full transition-all font-semibold hover:scale-105 active:scale-95"
             >
               <Plus className="w-5 h-5" />
               New file
@@ -530,12 +545,10 @@ export default function App() {
       )}
 
       {/* Header / Toolbar */}
-      <header className="flex-none h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+      <header className="flex-none h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4">
         <div className="flex items-center space-x-3">
-          <div className="p-1.5 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg">
-            <FileCode2 className="w-5 h-5" />
-          </div>
-          <span className="font-semibold text-gray-900 dark:text-white hidden sm:block">
+          <Logo size={28} />
+          <span className="font-bold text-gray-900 dark:text-white hidden sm:block tracking-tight text-lg">
             JSX Viewer
           </span>
         </div>
@@ -711,6 +724,11 @@ export default function App() {
             onClick={() => {
               setActiveFileId(f.id);
               setLayout('single');
+            }}
+            onAuxClick={(e) => {
+              if (e.button === 1) {
+                closeFile(e, f.id);
+              }
             }}
             className={cn(
               "flex items-center px-4 min-w-[120px] max-w-[200px] cursor-pointer group transition-colors rounded-t-2xl border border-b-0",
