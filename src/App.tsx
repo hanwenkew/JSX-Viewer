@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileCode2, SplitSquareHorizontal, X, UploadCloud, Download, Columns, Columns3, Code2, Play, Plus, History, FolderOpen, Search, Monitor, Tablet, Smartphone, Square } from 'lucide-react';
+import { FileCode2, SplitSquareHorizontal, X, UploadCloud, Download, Columns, Columns3, Code2, Play, Plus, History, FolderOpen, Search, Monitor, Tablet, Smartphone, Square, Info, ShieldCheck } from 'lucide-react';
 import { Logo } from './components/Logo';
 import { CodeViewer } from './components/CodeViewer';
 import { Preview } from './components/Preview';
@@ -254,6 +254,7 @@ export default function App() {
     return saved ? parseFloat(saved) : 1;
   });
   const [showZoomIndicator, setShowZoomIndicator] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -314,7 +315,7 @@ export default function App() {
 
   if (files.length === 0) {
     return (
-      <div 
+      <main 
         className="min-h-screen bg-white dark:bg-gray-900 flex flex-col items-center justify-center p-6 relative"
         style={{ zoom: zoomScale } as any}
         onDragOver={(e) => { e.preventDefault(); setIsDraggingStartup(true); }}
@@ -398,7 +399,7 @@ export default function App() {
             </div>
           )}
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -717,6 +718,16 @@ export default function App() {
           )}
 
           <button
+            onClick={() => setShowAboutModal(true)}
+            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:text-gray-100 rounded-2xl transition-colors"
+            title="Privacy & About"
+          >
+            <Info className="w-5 h-5" />
+          </button>
+
+          <div className="w-px h-6 bg-gray-300 dark:bg-gray-700"></div>
+
+          <button
             onClick={handleDownload}
             className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-200 dark:hover:bg-gray-700 dark:hover:text-gray-100 rounded-2xl transition-colors"
             title="Download active file"
@@ -794,6 +805,67 @@ export default function App() {
             <Search className="w-4 h-4" />
             <span>{Math.round(zoomScale * 100)}%</span>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* About & Privacy Modal */}
+      <AnimatePresence>
+        {showAboutModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAboutModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <Logo size={32} />
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">About JSX Viewer</h2>
+                  </div>
+                  <button 
+                    onClick={() => setShowAboutModal(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                <div className="space-y-6 text-gray-600 dark:text-gray-400">
+                  <p>
+                    JSX Viewer is a minimalist, real-time workbench for testing React UI components and UX flows.
+                    It's designed to be fast, local-first, and completely private.
+                  </p>
+
+                  <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-3 mb-3 text-gray-900 dark:text-white font-semibold">
+                      <ShieldCheck className="w-5 h-5 text-green-500" />
+                      Privacy First
+                    </div>
+                    <p className="text-sm leading-relaxed">
+                      Your code never leaves your browser. All data is processed locally and persisted only in your browser's <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">localStorage</code>.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div className="text-xs font-medium text-gray-400">Version 1.0.0</div>
+                    <div className="flex gap-4">
+                      <a href="https://github.com" target="_blank" rel="noreferrer" className="text-sm font-semibold text-gray-900 dark:text-white hover:underline">GitHub</a>
+                      <a href="#" onClick={(e) => { e.preventDefault(); setShowAboutModal(false); }} className="text-sm font-semibold text-gray-900 dark:text-white hover:underline">License</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

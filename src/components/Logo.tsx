@@ -14,7 +14,11 @@ export function Logo({ className, size = 32 }: LogoProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      role="img"
+      aria-label="JSX Viewer Logo - Symbolizing UI structure and UX journey"
     >
+      <title>JSX Viewer Logo</title>
+      <desc>A minimalist logo featuring a structured frame for UI and a fluid curve for UX journey.</desc>
       {/* UI: The Structured Frame */}
       <rect
         x="20"

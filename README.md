@@ -20,6 +20,28 @@ A sleek, real-time React component previewer and comparison tool designed for de
 
 ## Getting Started
 
+### Local Development
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/yourusername/jsx-viewer.git
+   cd jsx-viewer
+   ```
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+3. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+4. **Build for production**:
+   ```bash
+   npm run build
+   ```
+
+### Usage
+
 1. **Open a File**: Drag a `.jsx`, `.tsx`, or `.js` file into the app or use the "Add File" button in the tabs bar.
 2. **Edit & Preview**: Use the split view to see changes in real-time as you refine your component.
 3. **Compare**: Switch to 2-column or 3-column mode to compare different versions or related components.
@@ -27,11 +49,23 @@ A sleek, real-time React component previewer and comparison tool designed for de
 
 ## Tech Stack
 
-- **React 18**
+- **React 19**
+- **Vite**
 - **Tailwind CSS**
 - **Lucide React** (Icons)
 - **Motion** (Animations)
-- **Monaco Editor** (via CodeViewer)
+- **Babel Standalone** (Transpilation)
+
+## Privacy & Data
+
+JSX Viewer is a **privacy-first** application. 
+- All code you write or upload stays **entirely in your browser**.
+- We use `localStorage` to persist your layout preferences, zoom levels, and recent files.
+- No data is sent to any external server.
+
+## License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 Built for speed, clarity, and a seamless developer experience.
