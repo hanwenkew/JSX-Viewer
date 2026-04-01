@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileCode2, SplitSquareHorizontal, X, UploadCloud, Download, Columns, Columns3, Code2, Play, Plus, History, FolderOpen, Search, Monitor, Tablet, Smartphone, Square, Info, ShieldCheck } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import { Logo } from './components/Logo';
 import { CodeViewer } from './components/CodeViewer';
 import { Preview } from './components/Preview';
@@ -868,6 +869,7 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+      <Analytics />
     </div>
   );
 }
