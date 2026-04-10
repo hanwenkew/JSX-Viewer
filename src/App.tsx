@@ -420,7 +420,7 @@ export default function App() {
         {(singleViewMode === 'split' || singleViewMode === 'code') && (
           <div className={cn("h-full flex flex-col min-h-0", singleViewMode === 'code' ? "w-full max-w-5xl mx-auto" : "")}>
             <div className="flex-1 min-h-0 relative rounded-2xl overflow-hidden">
-              <CodeViewer code={file.content} />
+              <CodeViewer code={file.content} onChange={(c) => updateFileContent(file.id, c)} />
             </div>
           </div>
         )}
@@ -511,7 +511,7 @@ export default function App() {
                 {!file ? (
                   <div className="h-full flex items-center justify-center text-gray-400">No file selected</div>
                 ) : compareViewMode === 'code' ? (
-                  <CodeViewer code={file.content} />
+                  <CodeViewer code={file.content} onChange={(c) => updateFileContent(file.id, c)} />
                 ) : (
                   <div className="h-full flex flex-col">
                     <div style={getViewportStyles()} className="flex-1 min-h-0 transition-all duration-300 ease-in-out">
